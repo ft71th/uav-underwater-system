@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UAV Undervattensystem — Kopplingsschema v3 (RS485 GPS)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0e1a; color: #e0e4ec; line-height: 1.6; padding: 32px; }
+  
+  h1 { text-align: center; font-size: 1.8rem; color: #7ec8f0; margin-bottom: 8px; letter-spacing: 1px; }
+  .subtitle { text-align: center; color: #6a7a8a; font-size: 0.95rem; margin-bottom: 12px; }
+  .version { text-align: center; color: #4a5a6a; font-size: 0.8rem; margin-bottom: 40px; }
+  
+  .zone { margin-bottom: 48px; border-radius: 12px; overflow: hidden; }
+  .zone-header { padding: 16px 24px; font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+  .zone-body { padding: 24px; background: #111827; border: 1px solid rgba(255,255,255,0.06); border-top: none; border-radius: 0 0 12px 12px; }
+  
+  .boj .zone-header { background: linear-gradient(135deg, #065f46, #047857); color: #a7f3d0; }
+  .kabel .zone-header { background: linear-gradient(135deg, #713f12, #a16207); color: #fef08a; }
+  .uav .zone-header { background: linear-gradient(135deg, #1e3a5f, #1d4ed8); color: #bfdbfe; }
+  
+  .module { margin-bottom: 28px; }
+  .module-title { font-size: 1.05rem; font-weight: 600; color: #f0f4f8; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .module-title .chip { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .chip-power { background: #7f1d1d; color: #fca5a5; }
+  .chip-signal { background: #1e3a5f; color: #93c5fd; }
+  .chip-i2c { background: #4a1d7a; color: #d8b4fe; }
+  .chip-new { background: #065f46; color: #6ee7b7; }
+  .chip-removed { background: #4a1520; color: #f87171; text-decoration: line-through; }
+  .module-desc { font-size: 0.85rem; color: #6b7b8b; margin-bottom: 12px; }
+  
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th { text-align: left; padding: 8px 12px; background: #1a2234; color: #8899aa; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #162032; }
+  
+  .pin { font-family: 'Courier New', monospace; font-weight: 600; color: #67e8f9; }
+  .arrow { color: #4b5563; margin: 0 4px; }
+  .dest { font-family: 'Courier New', monospace; color: #fbbf24; }
+  
+  .power-row td { border-left: 3px solid #ef4444; }
+  .signal-row td { border-left: 3px solid #3b82f6; }
+  .gnd-row td { border-left: 3px solid #6b7280; }
+  .i2c-row td { border-left: 3px solid #a855f7; }
+  .pwm-row td { border-left: 3px solid #22c55e; }
+  .rs485-row td { border-left: 3px solid #f59e0b; }
+  .batt2-row td { border-left: 3px solid #f97316; }
+  
+  .cable-diagram { background: #0f172a; border-radius: 8px; padding: 20px; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.8; text-align: center; margin: 16px 0; }
+  .cable-diagram .label { color: #94a3b8; }
+  .cable-diagram .wire { font-weight: 700; }
+  
+  .notes { background: #1a1f2e; border-left: 3px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-top: 20px; }
+  .notes h3 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 8px; }
+  .notes ul { padding-left: 20px; }
+  .notes li { font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; }
+  .notes-warn { border-left-color: #f59e0b; }
+  .notes-warn h3 { color: #fbbf24; }
+  .notes-green { border-left-color: #22c55e; }
+  .notes-green h3 { color: #4ade80; }
+  
+  .power-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .power-card { background: #1a1f2e; padding: 16px; border-radius: 8px; border: 1px solid #1e293b; }
+  .power-card h4 { color: #f87171; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .power-card p { font-size: 0.85rem; color: #94a3b8; }
+  .power-card .voltage { font-size: 1.4rem; font-weight: 700; color: #fbbf24; }
+
+  .section-divider { border: none; border-top: 1px solid #1e293b; margin: 32px 0; }
+
+  .power-flow { background: #0f172a; border-radius: 8px; padding: 20px; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 2; margin: 16px 0; overflow-x: auto; }
+  .power-flow .v22 { color: #ef4444; font-weight: 700; }
+  .power-flow .v7 { color: #f97316; font-weight: 700; }
+  .power-flow .v5 { color: #22c55e; font-weight: 700; }
+  .power-flow .label { color: #94a3b8; }
+  .power-flow .component { color: #67e8f9; }
+
+  .change-badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600; vertical-align: middle; }
+  .badge-new { background: #065f46; color: #6ee7b7; }
+  .badge-changed { background: #713f12; color: #fef08a; }
+  .badge-removed { background: #4a1520; color: #f87171; }
+</style>
+</head>
+<body>
+
+<h1>⚓ UAV Undervattensystem — Komplett Kopplingsschema</h1>
+<p class="subtitle">Pin-för-pin inkoppling • Dubbla batterier (22.2V + 7.4V) • RS485 GPS</p>
+<p class="version">v3 — GPS uppgraderad till RS485 (E108 GN04G-485) • MAX3232 borttagen</p>
+
+<!-- ============================================================ -->
+<!-- ÄNDRINGSLOGG -->
+<!-- ============================================================ -->
+<div class="notes notes-green" style="margin-bottom: 40px;">
+  <h3>✅ Ändringar i v3 (RS485 GPS)</h3>
+  <ul>
+    <li><strong>GPS bytt</strong> från E108 GN04G-232 (RS232) → <strong>E108 GN04G-485 (RS485)</strong></li>
+    <li><strong>MAX3232 borttagen</strong> — behövs inte längre</li>
+    <li><strong>MAX485 #2 tillagd i bojen</strong> — läser GPS RS485-data, permanent mottagningsläge</li>
+    <li><strong>DE/RE på MAX485 #2</strong> kopplade till GND (permanent RX) — inget styrsignal behövs</li>
+    <li>Arduino SoftwareSerial (D4/D5) oförändrat — nu kopplat till MAX485 #2 istället för MAX3232</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<!-- MATNINGSÖVERSIKT -->
+<!-- ============================================================ -->
+<div style="margin-bottom: 40px; background: #111827; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06);">
+  <h2 style="color: #f87171; font-size: 1.1rem; margin-bottom: 16px;">⚡ Kraftflöde — Översikt</h2>
+  <div class="power-flow">
+    <span class="label">UAV KRAFTSYSTEM:</span><br><br>
+    <span class="v22">Batteri 22.2V (6S LiPo)</span><br>
+    <span class="label">  ├──→</span> <span class="component">ESC 40A</span> <span class="label">──→ Motor (borstellös)</span><br>
+    <span class="label">  ├──→</span> <span class="component">ESC BEC</span> <span class="label">──→</span> <span class="v5">5V / 3A</span> <span class="label">──→ Arduino, MAX485, PCA9685 VCC (logik)</span><br>
+    <span class="label">  └──→</span> <span class="component">Kabel till boj</span> <span class="label">──→</span> <span class="component">DC/DC</span> <span class="label">──→</span> <span class="v5">5V</span> <span class="label">──→ Boj-elektronik</span><br><br>
+    <span class="v7">Batteri 7.4V (2S LiPo)</span><br>
+    <span class="label">  └──→</span> <span class="component">Buck-converter (5A)</span> <span class="label">──→</span> <span class="v5">5V / 5A</span> <span class="label">──→</span> <span class="component">PCA9685 V+</span> <span class="label">──→ Alla servon</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BOJ -->
+<!-- ============================================================ -->
+<div class="zone boj">
+  <div class="zone-header">🟢 BOJ</div>
+  <div class="zone-body">
+
+    <!-- DC/DC Boj -->
+    <div class="module">
+      <div class="module-title">DC/DC Omvandlare (22.2V → 5V) <span class="chip chip-power">MATNING</span></div>
+      <div class="module-desc">Tar 22.2V från UAV-batteriet via kabeln och ger 5V till alla moduler i bojen</div>
+      <table>
+        <tr><th>DC/DC Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VIN+</span></td><td class="arrow">←</td><td><span class="dest">Kabel 22.2V</span></td><td>Från UAV-batteri via kabel</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VIN-</span></td><td class="arrow">←</td><td><span class="dest">Kabel GND</span></td><td>Gemensam jord</td></tr>
+        <tr class="power-row"><td><span class="pin">VOUT+</span></td><td class="arrow">→</td><td><span class="dest">5V buss (boj)</span></td><td>Matar Arduino, Skyfly RX, GPS, MAX485 #1, MAX485 #2</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VOUT-</span></td><td class="arrow">→</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Arduino Nano BOJ -->
+    <div class="module">
+      <div class="module-title">Arduino Nano — BOJ <span class="chip chip-signal">HUVUDKONTROLLER</span> <span class="change-badge badge-changed">ÄNDRAD</span></div>
+      <div class="module-desc">Läser PWM från mottagaren, GPS via MAX485 #2, skickar allt via MAX485 #1 till UAV</div>
+      <table>
+        <tr><th>Arduino Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">5V</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">D0 (TX)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #1 — DI</span></td><td>Hårdvaru-serial TX → RS485 till UAV</td></tr>
+        <tr class="signal-row"><td><span class="pin">D1 (RX)</span></td><td class="arrow">←</td><td><span class="dest">MAX485 #1 — RO</span></td><td>Hårdvaru-serial RX ← RS485 från UAV</td></tr>
+        <tr class="signal-row"><td><span class="pin">D2</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #1 — DE + RE</span></td><td>Riktningskontroll UAV-länk</td></tr>
+        <tr class="signal-row"><td><span class="pin">D4</span></td><td class="arrow">←</td><td><span class="dest">MAX485 #2 — RO</span></td><td>SoftwareSerial RX ← GPS NMEA via RS485</td></tr>
+        <tr class="signal-row"><td><span class="pin">D5</span></td><td class="arrow">→</td><td><span class="dest">(ej ansluten)</span></td><td>SoftwareSerial TX — GPS behöver normalt ej kommandon</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D6</span></td><td class="arrow">←</td><td><span class="dest">Skyfly RX — CH1</span></td><td>PWM: Speed +/−</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D7</span></td><td class="arrow">←</td><td><span class="dest">Skyfly RX — CH2</span></td><td>PWM: Yaw port/starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D8</span></td><td class="arrow">←</td><td><span class="dest">Skyfly RX — CH3</span></td><td>PWM: Pitch port</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D9</span></td><td class="arrow">←</td><td><span class="dest">Skyfly RX — CH4</span></td><td>PWM: Pitch starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D10</span></td><td class="arrow">←</td><td><span class="dest">Skyfly RX — CH5</span></td><td>PWM: Ballast +/−</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Skyfly RX -->
+    <div class="module">
+      <div class="module-title">Skyfly 2.4 GHz Mottagare <span class="chip chip-signal">RC-MOTTAGARE</span></div>
+      <div class="module-desc">Tar emot RC-signaler och ger PWM-utgångar</div>
+      <table>
+        <tr><th>Skyfly Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC / +</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning 5V</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND / −</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH1 (Signal)</span></td><td class="arrow">→</td><td><span class="dest">Arduino D6</span></td><td>Speed +/−</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH2 (Signal)</span></td><td class="arrow">→</td><td><span class="dest">Arduino D7</span></td><td>Yaw port/starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH3 (Signal)</span></td><td class="arrow">→</td><td><span class="dest">Arduino D8</span></td><td>Pitch port</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH4 (Signal)</span></td><td class="arrow">→</td><td><span class="dest">Arduino D9</span></td><td>Pitch starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH5 (Signal)</span></td><td class="arrow">→</td><td><span class="dest">Arduino D10</span></td><td>Ballast +/−</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- GPS RS485 -->
+    <div class="module">
+      <div class="module-title">GPS E108 GN04G-485 <span class="chip chip-signal">NAVIGATION</span> <span class="change-badge badge-changed">NY MODELL</span></div>
+      <div class="module-desc">RS485-utgång, matas med 2.7–5.5V, ansluts direkt till MAX485 #2 (A↔A, B↔B)</div>
+      <table>
+        <tr><th>GPS Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning (2.7–5.5V)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A (RS485+)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #2 — A</span></td><td>Differentiell signal +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B (RS485−)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #2 — B</span></td><td>Differentiell signal −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- MAX485 #2 GPS -->
+    <div class="module">
+      <div class="module-title">MAX485 #2 — GPS Mottagare <span class="chip chip-signal">RS485 → TTL</span> <span class="change-badge badge-new">NY</span></div>
+      <div class="module-desc">Tar emot RS485 NMEA-data från GPS:en och omvandlar till TTL för Arduinon. Permanent mottagningsläge (DE+RE till GND).</div>
+      <table>
+        <tr><th>MAX485 #2 Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino — D4</span></td><td>Receive Out → SoftSerial RX (GPS NMEA)</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">(ej ansluten)</span></td><td>Data In — används ej (GPS sänder bara)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">DE</span></td><td class="arrow">←</td><td><span class="dest">GND</span></td><td>Driver Enable → GND = permanent AV (sänder ej)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">RE</span></td><td class="arrow">←</td><td><span class="dest">GND</span></td><td>Receive Enable → GND = permanent PÅ (lyssnar alltid)</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">←</td><td><span class="dest">GPS — A (RS485+)</span></td><td>Differentiell signal +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">←</td><td><span class="dest">GPS — B (RS485−)</span></td><td>Differentiell signal −</td></tr>
+      </table>
+
+      <div class="notes notes-green" style="margin-top: 16px;">
+        <h3>💡 Permanent mottagningsläge</h3>
+        <ul>
+          <li><strong>DE = GND:</strong> Driver disabled (sänder aldrig)</li>
+          <li><strong>RE = GND:</strong> Receiver enabled (lyssnar alltid)</li>
+          <li>Ingen Arduino-pin behövs för riktningskontroll — sparar en digital pin</li>
+          <li>GPS:en är ensam sändare på denna RS485-länk, så det finns ingen kollisionsrisk</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- MAX485 #1 UAV-länk -->
+    <div class="module">
+      <div class="module-title">MAX485 #1 — RS485 UAV-länk (Boj-sida) <span class="chip chip-signal">KOMMUNIKATION</span></div>
+      <div class="module-desc">Konverterar TTL-serial till RS485 differentiell signal för undervattenskabeln till UAV</div>
+      <table>
+        <tr><th>MAX485 #1 Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">Arduino — D0 (TX)</span></td><td>Data In (Arduino skickar till UAV)</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino — D1 (RX)</span></td><td>Receive Out (Arduino tar emot från UAV)</td></tr>
+        <tr class="signal-row"><td><span class="pin">DE</span></td><td class="arrow">←</td><td><span class="dest">Arduino — D2</span></td><td rowspan="2" style="vertical-align:middle;">Ihopkopplade! HIGH=sänd, LOW=ta emot</td></tr>
+        <tr class="signal-row"><td><span class="pin">RE</span></td><td class="arrow">←</td><td><span class="dest">Arduino — D2</span></td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">→</td><td><span class="dest">Kabel — RS485 A</span></td><td>Differentiell signal +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">→</td><td><span class="dest">Kabel — RS485 B</span></td><td>Differentiell signal −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Boj signalflöde -->
+    <div class="module">
+      <div class="module-title">Signalflöde i bojen — Sammanfattning</div>
+      <div class="power-flow">
+        <span class="label">SIGNALER:</span><br><br>
+        <span class="component">Skyfly RX</span> <span class="label">──PWM──→</span> <span class="component">Arduino D6-D10</span><br>
+        <span class="component">GPS (RS485)</span> <span class="label">──A/B──→</span> <span class="component">MAX485 #2</span> <span class="label">──TTL──→</span> <span class="component">Arduino D4 (SoftSerial)</span><br>
+        <span class="component">Arduino D0/D1</span> <span class="label">──TTL──→</span> <span class="component">MAX485 #1</span> <span class="label">──A/B──→</span> <span class="component">Kabel till UAV</span><br><br>
+        <span class="label">MATNING:</span><br><br>
+        <span class="component">Kabel 22.2V</span> <span class="label">──→</span> <span class="component">DC/DC</span> <span class="label">──→</span> <span class="v5">5V</span> <span class="label">──→ Arduino, Skyfly, GPS, MAX485 #1, MAX485 #2</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KABEL -->
+<!-- ============================================================ -->
+<div class="zone kabel">
+  <div class="zone-header">🟡 UNDERVATTENSKABEL</div>
+  <div class="zone-body">
+    <div class="module-desc" style="margin-bottom:16px;">Kabeln mellan boj och UAV bär 4 ledare (oförändrad)</div>
+    
+    <div class="cable-diagram">
+      <span class="label">BOJ</span> ══════════════════════════════════ <span class="label">UAV</span><br><br>
+      <span class="wire" style="color:#ef4444;">━━━ 22.2V (Matning från 6S batteri) ━━━</span><br>
+      <span class="wire" style="color:#6b7280;">━━━ GND (Gemensam jord) ━━━━━━━━━━━━</span><br>
+      <span class="wire" style="color:#f59e0b;">━━━ RS485 A (tvinnat par) ━━━━━━━━━━━</span><br>
+      <span class="wire" style="color:#3b82f6;">━━━ RS485 B (tvinnat par) ━━━━━━━━━━━</span><br>
+    </div>
+
+    <table>
+      <tr><th>Ledare</th><th>Från (Boj)</th><th>Till (UAV)</th><th>Beskrivning</th></tr>
+      <tr class="power-row"><td><span class="pin">22.2V</span></td><td>DC/DC VIN+</td><td>6S Batteri +</td><td>Kraftmatning 24V-system</td></tr>
+      <tr class="gnd-row"><td><span class="pin">GND</span></td><td>DC/DC VIN−</td><td>Gemensam GND</td><td>Returledare</td></tr>
+      <tr class="rs485-row"><td><span class="pin">RS485 A</span></td><td>MAX485 #1 A (boj)</td><td>MAX485 A (UAV)</td><td>Differentiell data +</td></tr>
+      <tr class="rs485-row"><td><span class="pin">RS485 B</span></td><td>MAX485 #1 B (boj)</td><td>MAX485 B (UAV)</td><td>Differentiell data −</td></tr>
+    </table>
+
+    <div class="notes">
+      <h3>⚡ Kabeltips</h3>
+      <ul>
+        <li><strong>Terminering:</strong> 120Ω motstånd mellan A och B i vardera änden om kabeln &gt;10m</li>
+        <li><strong>Tvinnad par:</strong> RS485 A och B bör vara ett tvinnat par för störningsskydd</li>
+        <li><strong>Tvärsnittsarea:</strong> Beräkna spänningsfall vid 22.2V — vid 2A och 20m behövs minst 0.5mm²</li>
+        <li><strong>Vattentätning:</strong> Kabelgenomföringar, epoxy, O-ringar</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- UAV -->
+<!-- ============================================================ -->
+<div class="zone uav">
+  <div class="zone-header">🔵 UAV (Undervattensfartyg)</div>
+  <div class="zone-body">
+
+    <!-- Batteri 6S + ESC -->
+    <div class="module">
+      <div class="module-title">Batteri 22.2V (6S LiPo) + ESC 40A <span class="chip chip-power">MOTOR + 24V SYSTEM</span></div>
+      <div class="module-desc">Huvudbatteri — driver motor via ESC, matar bojen via kabel, ESC BEC ger 5V/3A till logik</div>
+      <table>
+        <tr><th>Pin / Ledare</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">6S Batteri +</span></td><td class="arrow">→</td><td><span class="dest">ESC Power +</span></td><td>22.2V till ESC</td></tr>
+        <tr class="power-row"><td><span class="pin">6S Batteri +</span></td><td class="arrow">→</td><td><span class="dest">Kabel 22.2V</span></td><td>22.2V upp till bojen</td></tr>
+        <tr class="gnd-row"><td><span class="pin">6S Batteri −</span></td><td class="arrow">→</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC — Signal</span></td><td class="arrow">←</td><td><span class="dest">PCA9685 — CH0 (signal)</span></td><td>Bara PWM-signal!</td></tr>
+        <tr class="gnd-row"><td><span class="pin">ESC — Signal GND</span></td><td class="arrow">←</td><td><span class="dest">PCA9685 — CH0 (GND)</span></td><td>Signalreferens</td></tr>
+        <tr class="power-row"><td><span class="pin">ESC — BEC 5V</span></td><td class="arrow">→</td><td><span class="dest">5V logikbuss (UAV)</span></td><td>5V/3A → Arduino, MAX485, PCA9685 VCC</td></tr>
+        <tr class="gnd-row"><td><span class="pin">ESC — BEC GND</span></td><td class="arrow">→</td><td><span class="dest">GND buss (UAV)</span></td><td>Jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC — Motor U</span></td><td class="arrow">→</td><td><span class="dest">Motor fas U</span></td><td rowspan="3" style="vertical-align:middle;">3-fas till borstellös motor</td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC — Motor V</span></td><td class="arrow">→</td><td><span class="dest">Motor fas V</span></td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC — Motor W</span></td><td class="arrow">→</td><td><span class="dest">Motor fas W</span></td></tr>
+      </table>
+
+      <div class="notes notes-warn" style="margin-top: 16px;">
+        <h3>⚠️ ESC → PCA9685 koppling</h3>
+        <ul>
+          <li><strong>Koppla INTE ESC BEC 5V till PCA9685 servo-header!</strong> BEC 5V ska gå till logikbussen, inte in via CH0.</li>
+          <li>Från ESC:ns servokontakt: använd bara <strong>signal (vit/gul)</strong> och <strong>GND (svart/brun)</strong> till PCA9685 CH0.</li>
+          <li>Klipp eller tejpa bort den röda BEC-tråden på ESC-servokontakten om du kopplar BEC separat.</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Batteri 7.4V + Buck -->
+    <div class="module">
+      <div class="module-title">Batteri 7.4V (2S LiPo) + Buck-converter (5A) <span class="chip chip-new">SERVOMATNING</span></div>
+      <div class="module-desc">Separat batteri för servon — buck-converter sänker 7.4V → 5V, max 5A</div>
+      <table>
+        <tr><th>Pin / Ledare</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="batt2-row"><td><span class="pin">2S Batteri +</span></td><td class="arrow">→</td><td><span class="dest">Buck VIN+</span></td><td>7.4V in</td></tr>
+        <tr class="gnd-row"><td><span class="pin">2S Batteri −</span></td><td class="arrow">→</td><td><span class="dest">Buck VIN− / GND buss</span></td><td>Gemensam jord (KRITISKT!)</td></tr>
+        <tr class="power-row"><td><span class="pin">Buck VOUT+</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 — V+ (skruvplint)</span></td><td>5V / 5A till servon</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Buck VOUT−</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 — GND (skruvplint)</span></td><td>Gemensam jord</td></tr>
+      </table>
+
+      <div class="notes notes-warn" style="margin-top: 16px;">
+        <h3>⚠️ Kritiskt: Gemensam jord</h3>
+        <ul>
+          <li>7.4V-batteriets minus <strong>MÅSTE</strong> kopplas till samma GND-buss som 22.2V-batteriet.</li>
+          <li>Utan gemensam jord fungerar inte I²C mellan Arduino och PCA9685.</li>
+          <li>Ställ in buck-convertern till exakt <strong>5.0V</strong> med trimpotet INNAN du kopplar in PCA9685 (max 6V på V+).</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- MAX485 UAV -->
+    <div class="module">
+      <div class="module-title">MAX485 — RS485 Mottagare (UAV-sida) <span class="chip chip-signal">KOMMUNIKATION</span></div>
+      <div class="module-desc">Tar emot RS485-data från kabeln och omvandlar till TTL för Arduinon</div>
+      <table>
+        <tr><th>MAX485 Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V (logikbuss)</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV — D0 (TX)</span></td><td>Data In (eventuell retur-data)</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino UAV — D1 (RX)</span></td><td>Receive Out → Arduino tar emot</td></tr>
+        <tr class="signal-row"><td><span class="pin">DE</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV — D2</span></td><td rowspan="2" style="vertical-align:middle;">Ihopkopplade! Normalt LOW (mottagning)</td></tr>
+        <tr class="signal-row"><td><span class="pin">RE</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV — D2</span></td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">←</td><td><span class="dest">Kabel — RS485 A</span></td><td>Differentiell signal +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">←</td><td><span class="dest">Kabel — RS485 B</span></td><td>Differentiell signal −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Arduino Nano UAV -->
+    <div class="module">
+      <div class="module-title">Arduino Nano — UAV <span class="chip chip-signal">HUVUDKONTROLLER</span></div>
+      <div class="module-desc">Tar emot data via RS485, styr PCA9685 via I²C som genererar PWM till servon och ESC</div>
+      <table>
+        <tr><th>Arduino Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">5V</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V (logikbuss)</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">D0 (TX)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 — DI</span></td><td>Hårdvaru-serial TX (eventuell retur)</td></tr>
+        <tr class="signal-row"><td><span class="pin">D1 (RX)</span></td><td class="arrow">←</td><td><span class="dest">MAX485 — RO</span></td><td>Hårdvaru-serial RX ← RS485-data</td></tr>
+        <tr class="signal-row"><td><span class="pin">D2</span></td><td class="arrow">→</td><td><span class="dest">MAX485 — DE + RE</span></td><td>Riktning (normalt LOW = mottagning)</td></tr>
+        <tr class="i2c-row"><td><span class="pin">A4 (SDA)</span></td><td class="arrow">↔</td><td><span class="dest">PCA9685 — SDA</span></td><td>I²C Data</td></tr>
+        <tr class="i2c-row"><td><span class="pin">A5 (SCL)</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 — SCL</span></td><td>I²C Clock</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- PCA9685 -->
+    <div class="module">
+      <div class="module-title">PCA9685 — 16-kanal PWM-kort <span class="chip chip-i2c">I²C SERVO-DRIVER</span></div>
+      <div class="module-desc">Genererar PWM-signaler till servon och ESC • VCC = logik (BEC) • V+ = servokraft (Buck)</div>
+      <table>
+        <tr><th>PCA9685 Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V (logikbuss)</span></td><td>Logikmatning (3.3–5V)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="power-row"><td><span class="pin">V+ (skruvplint)</span></td><td class="arrow">←</td><td><span class="dest">Buck-converter 5V (5A)</span></td><td>Servomatning från 7.4V batteri</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND (skruvplint)</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="i2c-row"><td><span class="pin">SDA</span></td><td class="arrow">↔</td><td><span class="dest">Arduino UAV — A4</span></td><td>I²C Data</td></tr>
+        <tr class="i2c-row"><td><span class="pin">SCL</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV — A5</span></td><td>I²C Clock</td></tr>
+      </table>
+
+      <table style="margin-top: 16px;">
+        <tr><th>PCA9685 Kanal</th><th></th><th>Koppling</th><th>Funktion</th></tr>
+        <tr class="pwm-row"><td><span class="pin">CH0</span></td><td class="arrow">→</td><td><span class="dest">ESC — Signal + GND</span></td><td>Speed +/− (bara signal+GND, ej BEC!)</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH1</span></td><td class="arrow">→</td><td><span class="dest">Servo Rudder</span></td><td>Yaw port/starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH2</span></td><td class="arrow">→</td><td><span class="dest">Servo Pitch Port</span></td><td>Pitch port</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH3</span></td><td class="arrow">→</td><td><span class="dest">Servo Pitch Starbord</span></td><td>Pitch starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH4</span></td><td class="arrow">→</td><td><span class="dest">Ballast-mekanism</span></td><td>Ballast +/−</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Servon -->
+    <div class="module">
+      <div class="module-title">Servon & Motor <span class="chip chip-power">AKTUATORER</span></div>
+      <div class="module-desc">Servon matas via PCA9685 V+ (buck 5V/5A) • Motor matas direkt av ESC från 22.2V</div>
+      <table>
+        <tr><th>Aktuator</th><th>Signal</th><th>Matning (VCC)</th><th>GND</th></tr>
+        <tr class="pwm-row"><td>Motor (via ESC)</td><td><span class="pin">PCA9685 CH0 (signal)</span></td><td>22.2V batteri → ESC direkt</td><td>GND buss</td></tr>
+        <tr class="pwm-row"><td>Servo Rudder</td><td><span class="pin">PCA9685 CH1</span></td><td>Buck 5V via PCA9685 V+</td><td>PCA9685 GND</td></tr>
+        <tr class="pwm-row"><td>Servo Pitch Port</td><td><span class="pin">PCA9685 CH2</span></td><td>Buck 5V via PCA9685 V+</td><td>PCA9685 GND</td></tr>
+        <tr class="pwm-row"><td>Servo Pitch Starbord</td><td><span class="pin">PCA9685 CH3</span></td><td>Buck 5V via PCA9685 V+</td><td>PCA9685 GND</td></tr>
+        <tr class="pwm-row"><td>Ballast-mekanism</td><td><span class="pin">PCA9685 CH4</span></td><td>Buck 5V via PCA9685 V+</td><td>PCA9685 GND</td></tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MATNINGSSUMMERING -->
+<!-- ============================================================ -->
+<div style="margin-top: 40px;">
+  <h2 style="color: #f87171; font-size: 1.2rem; margin-bottom: 16px;">⚡ Matningsspänningar — Sammanfattning</h2>
+  <div class="power-summary">
+    <div class="power-card">
+      <h4>🟢 Boj — 5V buss</h4>
+      <p class="voltage">5V</p>
+      <p>Källa: DC/DC (22.2V → 5V via kabel)</p>
+      <p style="margin-top: 8px;">Matar: Arduino Nano, Skyfly RX, GPS E108, MAX485 #1, MAX485 #2</p>
+    </div>
+    <div class="power-card">
+      <h4>🔵 UAV — 5V logikbuss</h4>
+      <p class="voltage">5V / 3A</p>
+      <p>Källa: ESC BEC (22.2V → 5V)</p>
+      <p style="margin-top: 8px;">Matar: Arduino Nano, MAX485, PCA9685 VCC (logik)</p>
+    </div>
+    <div class="power-card">
+      <h4>🔵 UAV — 5V servobuss</h4>
+      <p class="voltage">5V / 5A</p>
+      <p>Källa: Buck-converter (7.4V → 5V)</p>
+      <p style="margin-top: 8px;">Matar: PCA9685 V+ → Alla servon</p>
+    </div>
+    <div class="power-card">
+      <h4>🔵 UAV — 22.2V</h4>
+      <p class="voltage">22.2V</p>
+      <p>Källa: 6S LiPo batteri</p>
+      <p style="margin-top: 8px;">Matar: ESC/Motor, Kabel till boj (DC/DC)</p>
+    </div>
+    <div class="power-card">
+      <h4>🔵 UAV — 7.4V</h4>
+      <p class="voltage">7.4V</p>
+      <p>Källa: 2S LiPo batteri (separat)</p>
+      <p style="margin-top: 8px;">Matar: Buck-converter → Servon via PCA9685 V+</p>
+    </div>
+    <div class="power-card">
+      <h4>🟡 Kabel</h4>
+      <p class="voltage">4 ledare</p>
+      <p>22.2V, GND, RS485 A, RS485 B</p>
+      <p style="margin-top: 8px;">RS485 A+B = tvinnat par • 120Ω terminering</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KOMPONENTLISTA -->
+<!-- ============================================================ -->
+<div style="margin-top: 40px; background: #111827; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06);">
+  <h2 style="color: #7ec8f0; font-size: 1.1rem; margin-bottom: 16px;">📋 Komponentlista</h2>
+  <table>
+    <tr><th>Komponent</th><th>Antal</th><th>Placering</th><th>Notering</th></tr>
+    <tr><td>Arduino Nano</td><td>2 st</td><td>Boj + UAV</td><td>ATmega328P</td></tr>
+    <tr><td>MAX485-modul</td><td>3 st</td><td>Boj (2 st) + UAV (1 st)</td><td>Boj: #1 UAV-länk, #2 GPS</td></tr>
+    <tr><td>GPS E108 GN04G-485</td><td>1 st</td><td>Boj</td><td>RS485-version, 2.7–5.5V</td></tr>
+    <tr><td>Skyfly 2.4GHz RX</td><td>1 st</td><td>Boj</td><td>5 kanaler PWM</td></tr>
+    <tr><td>PCA9685 PWM-kort</td><td>1 st</td><td>UAV</td><td>16 kanaler, I²C</td></tr>
+    <tr><td>ESC 40A</td><td>1 st</td><td>UAV</td><td>BEC 5V/3A</td></tr>
+    <tr><td>Buck-converter (5A)</td><td>1 st</td><td>UAV</td><td>7.4V → 5V, typ LM2596</td></tr>
+    <tr><td>DC/DC converter</td><td>1 st</td><td>Boj</td><td>22.2V → 5V</td></tr>
+    <tr><td>6S LiPo 22.2V</td><td>1 st</td><td>UAV</td><td>Motor + boj-matning</td></tr>
+    <tr><td>2S LiPo 7.4V</td><td>1 st</td><td>UAV</td><td>Servomatning</td></tr>
+    <tr style="text-decoration: line-through; color: #666;"><td>MAX3232-modul</td><td><s>1 st</s></td><td><s>Boj</s></td><td>BORTTAGEN i v3 — ersatt av MAX485 #2</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<!-- NOTERINGAR -->
+<!-- ============================================================ -->
+<div class="notes" style="margin-top: 32px;">
+  <h3>📝 Viktiga noteringar</h3>
+  <ul>
+    <li><strong>GEMENSAM JORD:</strong> Båda batterierna (22.2V + 7.4V) MÅSTE dela samma GND. Utan detta fungerar varken RS485 eller I²C.</li>
+    <li><strong>GPS RS485 är punkt-till-punkt:</strong> GPS → MAX485 #2 är en separat RS485-länk, INTE på samma buss som UAV-kabeln.</li>
+    <li><strong>MAX485 #2 permanent RX:</strong> DE och RE kopplade till GND — lyssnar alltid, ingen Arduino-pin behövs.</li>
+    <li><strong>Du behöver nu 3 st MAX485-moduler:</strong> 2 i bojen (UAV-länk + GPS) + 1 i UAV. Köp en extra!</li>
+    <li><strong>Buck-converter inställning:</strong> Ställ in exakt 5.0V med multimeter INNAN PCA9685 kopplas in (max 6V på V+).</li>
+    <li><strong>ESC → PCA9685:</strong> Koppla bara signal + GND från PCA9685 CH0 till ESC. BEC 5V tas separat.</li>
+    <li><strong>RS485 DE+RE (MAX485 #1):</strong> Koppla samman till Arduino D2. HIGH = sänd, LOW = ta emot.</li>
+    <li><strong>USB-programmering:</strong> Koppla bort MAX485 #1 från D0/D1 vid uppladdning av kod.</li>
+    <li><strong>RS485-terminering:</strong> 120Ω mellan A och B i vardera änden vid kabel &gt;10m (gäller UAV-kabeln, ej GPS-länken som är kort).</li>
+    <li><strong>Avkopplingskondsator:</strong> 100µF elektrolyt + 100nF keramisk nära PCA9685 V+ skruvplint.</li>
+  </ul>
+</div>
+
+</body>
+</html>
