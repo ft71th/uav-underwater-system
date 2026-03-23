@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manta UAV — Kopplingsschema v4 (WAGO PLC Gateway)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0e1a; color: #e0e4ec; line-height: 1.6; padding: 32px; }
+  
+  h1 { text-align: center; font-size: 1.8rem; color: #7ec8f0; margin-bottom: 8px; letter-spacing: 1px; }
+  .subtitle { text-align: center; color: #6a7a8a; font-size: 0.95rem; margin-bottom: 12px; }
+  .version { text-align: center; color: #4a5a6a; font-size: 0.8rem; margin-bottom: 40px; }
+  
+  .zone { margin-bottom: 48px; border-radius: 12px; overflow: hidden; }
+  .zone-header { padding: 16px 24px; font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+  .zone-body { padding: 24px; background: #111827; border: 1px solid rgba(255,255,255,0.06); border-top: none; border-radius: 0 0 12px 12px; }
+  
+  .boj .zone-header { background: linear-gradient(135deg, #065f46, #047857); color: #a7f3d0; }
+  .kabel .zone-header { background: linear-gradient(135deg, #713f12, #a16207); color: #fef08a; }
+  .uav .zone-header { background: linear-gradient(135deg, #1e3a5f, #1d4ed8); color: #bfdbfe; }
+  .wago .zone-header { background: linear-gradient(135deg, #6b21a8, #7c3aed); color: #e9d5ff; }
+  .arduino-uav .zone-header { background: linear-gradient(135deg, #0e4429, #16a34a); color: #bbf7d0; }
+  
+  .module { margin-bottom: 28px; }
+  .module-title { font-size: 1.05rem; font-weight: 600; color: #f0f4f8; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .chip { font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .chip-power { background: #7f1d1d; color: #fca5a5; }
+  .chip-signal { background: #1e3a5f; color: #93c5fd; }
+  .chip-i2c { background: #4a1d7a; color: #d8b4fe; }
+  .chip-new { background: #065f46; color: #6ee7b7; }
+  .chip-wago { background: #4c1d95; color: #c4b5fd; }
+  .chip-future { background: #374151; color: #9ca3af; border: 1px dashed #6b7280; }
+  .module-desc { font-size: 0.85rem; color: #6b7b8b; margin-bottom: 12px; }
+  
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th { text-align: left; padding: 8px 12px; background: #1a2234; color: #8899aa; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+  tr:hover td { background: #162032; }
+  
+  .pin { font-family: 'Courier New', monospace; font-weight: 600; color: #67e8f9; }
+  .arrow { color: #4b5563; margin: 0 4px; }
+  .dest { font-family: 'Courier New', monospace; color: #fbbf24; }
+  
+  .power-row td { border-left: 3px solid #ef4444; }
+  .signal-row td { border-left: 3px solid #3b82f6; }
+  .gnd-row td { border-left: 3px solid #6b7280; }
+  .i2c-row td { border-left: 3px solid #a855f7; }
+  .pwm-row td { border-left: 3px solid #22c55e; }
+  .rs485-row td { border-left: 3px solid #f59e0b; }
+  .batt2-row td { border-left: 3px solid #f97316; }
+  .eth-row td { border-left: 3px solid #06b6d4; }
+  .future-row td { border-left: 3px dashed #6b7280; opacity: 0.7; }
+  
+  .cable-diagram { background: #0f172a; border-radius: 8px; padding: 20px; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 2; text-align: center; margin: 16px 0; overflow-x: auto; }
+  .cable-diagram .label { color: #94a3b8; }
+  .cable-diagram .wire { font-weight: 700; }
+  
+  .notes { background: #1a1f2e; border-left: 3px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-top: 20px; }
+  .notes h3 { color: #60a5fa; font-size: 0.9rem; margin-bottom: 8px; }
+  .notes ul { padding-left: 20px; }
+  .notes li { font-size: 0.85rem; color: #94a3b8; margin-bottom: 4px; }
+  .notes-warn { border-left-color: #f59e0b; }
+  .notes-warn h3 { color: #fbbf24; }
+  .notes-green { border-left-color: #22c55e; }
+  .notes-green h3 { color: #4ade80; }
+  .notes-purple { border-left-color: #8b5cf6; }
+  .notes-purple h3 { color: #a78bfa; }
+  
+  .power-summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .power-card { background: #1a1f2e; padding: 16px; border-radius: 8px; border: 1px solid #1e293b; }
+  .power-card h4 { color: #f87171; font-size: 0.85rem; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .power-card p { font-size: 0.85rem; color: #94a3b8; }
+  .power-card .voltage { font-size: 1.4rem; font-weight: 700; color: #fbbf24; }
+  
+  .section-divider { border: none; border-top: 1px solid #1e293b; margin: 32px 0; }
+  
+  .power-flow { background: #0f172a; border-radius: 8px; padding: 20px; font-family: 'Courier New', monospace; font-size: 0.78rem; line-height: 2; margin: 16px 0; overflow-x: auto; }
+  .power-flow .v22 { color: #ef4444; font-weight: 700; }
+  .power-flow .v24 { color: #f97316; font-weight: 700; }
+  .power-flow .v7 { color: #fb923c; font-weight: 700; }
+  .power-flow .v5 { color: #22c55e; font-weight: 700; }
+  .power-flow .label { color: #94a3b8; }
+  .power-flow .component { color: #67e8f9; }
+  .power-flow .wago { color: #c4b5fd; }
+  
+  .arch-diagram { background: #0f172a; border-radius: 8px; padding: 24px; font-family: 'Courier New', monospace; font-size: 0.75rem; line-height: 1.8; margin: 16px 0; overflow-x: auto; white-space: pre; }
+  .change-badge { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin-left: 8px; font-weight: 600; vertical-align: middle; }
+  .badge-new { background: #065f46; color: #6ee7b7; }
+  .badge-changed { background: #713f12; color: #fef08a; }
+</style>
+</head>
+<body>
+
+<h1>⚓ Manta UAV — Komplett Kopplingsschema</h1>
+<p class="subtitle">WAGO PLC Gateway • Dubbla batterier • RS485 GPS • Trycksensor • Ballast</p>
+<p class="version">v4 — WAGO 750 PLC som central gateway mellan Boj och UAV Arduino</p>
+
+<!-- ============================================================ -->
+<!-- SYSTEMARKITEKTUR -->
+<!-- ============================================================ -->
+<div style="margin-bottom: 40px; background: #111827; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06);">
+  <h2 style="color: #c4b5fd; font-size: 1.1rem; margin-bottom: 16px;">🏗️ Systemarkitektur — Översikt</h2>
+  <div class="arch-diagram">
+<span style="color:#a7f3d0;">╔═══════════════════════════════════════════════════════════════════╗</span>
+<span style="color:#a7f3d0;">║                           BOJ (YTA)                              ║</span>
+<span style="color:#a7f3d0;">║                                                                  ║</span>
+<span style="color:#a7f3d0;">║  Skyfly RX ──PWM──→ Arduino Nano ←──SoftSerial── MAX485#2 ←── GPS ║</span>
+<span style="color:#a7f3d0;">║                         │                                        ║</span>
+<span style="color:#a7f3d0;">║                    D0/D1 (Serial)                                ║</span>
+<span style="color:#a7f3d0;">║                         │                                        ║</span>
+<span style="color:#a7f3d0;">║                      MAX485#1                                    ║</span>
+<span style="color:#a7f3d0;">╚═════════════════════════╪════════════════════════════════════════╝</span>
+                          │ <span style="color:#fef08a;">RS485 A/B + 22.2V + GND</span>
+                          │ <span style="color:#fef08a;">Undervattenskabel (4 ledare)</span>
+<span style="color:#e9d5ff;">╔═════════════════════════╪════════════════════════════════════════╗</span>
+<span style="color:#e9d5ff;">║                    UAV — WAGO PLC                                ║</span>
+<span style="color:#e9d5ff;">║                         │                                        ║</span>
+<span style="color:#e9d5ff;">║                   ┌─────┴─────┐                                  ║</span>
+<span style="color:#e9d5ff;">║                   │ RS485 #1  │ ← Boj-länk                       ║</span>
+<span style="color:#e9d5ff;">║                   │ (750-652) │                                  ║</span>
+<span style="color:#e9d5ff;">║                   └───────────┘                                  ║</span>
+<span style="color:#e9d5ff;">║                                                                  ║</span>
+<span style="color:#e9d5ff;">║  WAGO PFC200 ──── 750-466 (AI) ←── Trycksensor 4-20mA            ║</span>
+<span style="color:#e9d5ff;">║       │                                                           ║</span>
+<span style="color:#e9d5ff;">║       ├───────── 750-530 (DO) ──→ Relä ──→ Linjärenhet ballast    ║</span>
+<span style="color:#e9d5ff;">║       │                                                           ║</span>
+<span style="color:#e9d5ff;">║       ├───────── 750-626 (Matning)                                ║</span>
+<span style="color:#e9d5ff;">║       │                                                           ║</span>
+<span style="color:#e9d5ff;">║       ├───────── Ethernet 1 ──→ DVL (kommer sen)                  ║</span>
+<span style="color:#e9d5ff;">║       │                                                           ║</span>
+<span style="color:#e9d5ff;">║       │           IMU/AHRS (kommer sen)                           ║</span>
+<span style="color:#e9d5ff;">║       │                                                           ║</span>
+<span style="color:#e9d5ff;">║                   ┌───────────┐                                  ║</span>
+<span style="color:#e9d5ff;">║                   │ RS485 #2  │ → UAV Arduino                    ║</span>
+<span style="color:#e9d5ff;">║                   │ (750-652) │                                  ║</span>
+<span style="color:#e9d5ff;">║                   └─────┬─────┘                                  ║</span>
+<span style="color:#e9d5ff;">╚═════════════════════════╪════════════════════════════════════════╝</span>
+                          │ <span style="color:#bbf7d0;">RS485 A/B (intern kabel)</span>
+<span style="color:#bbf7d0;">╔═════════════════════════╪════════════════════════════════════════╗</span>
+<span style="color:#bbf7d0;">║                   UAV — Arduino Nano                             ║</span>
+<span style="color:#bbf7d0;">║                         │                                        ║</span>
+<span style="color:#bbf7d0;">║                      MAX485                                      ║</span>
+<span style="color:#bbf7d0;">║                         │                                        ║</span>
+<span style="color:#bbf7d0;">║                    Arduino Nano                                   ║</span>
+<span style="color:#bbf7d0;">║                         │ I²C                                    ║</span>
+<span style="color:#bbf7d0;">║                      PCA9685 ──→ ESC (Motor)                     ║</span>
+<span style="color:#bbf7d0;">║                         ├──→ Servo Rudder                        ║</span>
+<span style="color:#bbf7d0;">║                         ├──→ Servo Pitch Port                    ║</span>
+<span style="color:#bbf7d0;">║                         ├──→ Servo Pitch Starbord                ║</span>
+<span style="color:#bbf7d0;">║                         └──→ (Ballast via WAGO DO nu)            ║</span>
+<span style="color:#bbf7d0;">╚═════════════════════════════════════════════════════════════════╝</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KRAFTFLÖDE -->
+<!-- ============================================================ -->
+<div style="margin-bottom: 40px; background: #111827; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06);">
+  <h2 style="color: #f87171; font-size: 1.1rem; margin-bottom: 16px;">⚡ Kraftflöde — Översikt</h2>
+  <div class="power-flow">
+    <span class="label">UAV KRAFTSYSTEM:</span><br><br>
+    <span class="v22">Batteri 22.2V (6S LiPo) — Topp</span><br>
+    <span class="label">  ├──→</span> <span class="component">DC/DC 22.2V→24V</span> <span class="label">──→</span> <span class="v24">24V</span> <span class="label">──→</span> <span class="wago">WAGO PLC + alla WAGO-moduler</span><br>
+    <span class="label">  └──→</span> <span class="component">Kabel till boj</span> <span class="label">──→</span> <span class="component">DC/DC 22.2V→5V</span> <span class="label">──→</span> <span class="v5">5V boj-elektronik</span><br><br>
+    <span class="v22">Batteri 22.2V (6S LiPo) — Botten</span><br>
+    <span class="label">  ├──→</span> <span class="component">ESC 40A</span> <span class="label">──→ Motor (borstellös)</span><br>
+    <span class="label">  └──→</span> <span class="component">ESC BEC</span> <span class="label">──→</span> <span class="v5">5V / 3A</span> <span class="label">──→ Arduino, MAX485, PCA9685 VCC</span><br><br>
+    <span class="v7">Batteri 7.4V (2S LiPo)</span><br>
+    <span class="label">  └──→</span> <span class="component">Buck-converter (5A)</span> <span class="label">──→</span> <span class="v5">5V / 5A</span> <span class="label">──→</span> <span class="component">PCA9685 V+</span> <span class="label">──→ Servon</span>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- BOJ -->
+<!-- ============================================================ -->
+<div class="zone boj">
+  <div class="zone-header">🟢 BOJ (YTA)</div>
+  <div class="zone-body">
+
+    <div class="module">
+      <div class="module-title">DC/DC Omvandlare (22.2V → 5V) <span class="chip chip-power">MATNING</span></div>
+      <div class="module-desc">Tar 22.2V via kabeln och ger 5V till alla boj-moduler</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VIN+</span></td><td class="arrow">←</td><td><span class="dest">Kabel 22.2V</span></td><td>Från UAV-batteri via kabel</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VIN-</span></td><td class="arrow">←</td><td><span class="dest">Kabel GND</span></td><td>Gemensam jord</td></tr>
+        <tr class="power-row"><td><span class="pin">VOUT+</span></td><td class="arrow">→</td><td><span class="dest">5V buss (boj)</span></td><td>Matar alla boj-moduler</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VOUT-</span></td><td class="arrow">→</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Arduino Nano — BOJ <span class="chip chip-signal">HUVUDKONTROLLER</span></div>
+      <div class="module-desc">Läser PWM från Skyfly, GPS via MAX485 #2, skickar allt via MAX485 #1 till WAGO</div>
+      <table>
+        <tr><th>Arduino Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">5V</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (boj)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">D0 (TX)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #1 — DI</span></td><td>Serial TX → RS485 till WAGO</td></tr>
+        <tr class="signal-row"><td><span class="pin">D1 (RX)</span></td><td class="arrow">←</td><td><span class="dest">MAX485 #1 — RO</span></td><td>Serial RX ← RS485 från WAGO</td></tr>
+        <tr class="signal-row"><td><span class="pin">D2</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #1 — DE+RE</span></td><td>Riktningskontroll (ihopkopplade)</td></tr>
+        <tr class="signal-row"><td><span class="pin">D4</span></td><td class="arrow">←</td><td><span class="dest">MAX485 #2 — RO</span></td><td>SoftSerial RX ← GPS NMEA</td></tr>
+        <tr class="signal-row"><td><span class="pin">D5</span></td><td class="arrow">→</td><td><span class="dest">(ej ansluten)</span></td><td>SoftSerial TX (ej behövd)</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D6</span></td><td class="arrow">←</td><td><span class="dest">Skyfly CH1</span></td><td>Speed +/−</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D7</span></td><td class="arrow">←</td><td><span class="dest">Skyfly CH2</span></td><td>Yaw port/starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D8</span></td><td class="arrow">←</td><td><span class="dest">Skyfly CH3</span></td><td>Pitch port</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D9</span></td><td class="arrow">←</td><td><span class="dest">Skyfly CH4</span></td><td>Pitch starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">D10</span></td><td class="arrow">←</td><td><span class="dest">Skyfly CH5</span></td><td>Ballast +/−</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Skyfly 2.4 GHz Mottagare <span class="chip chip-signal">RC-MOTTAGARE</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH1–CH5</span></td><td class="arrow">→</td><td><span class="dest">Arduino D6–D10</span></td><td>5 PWM-kanaler</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">GPS E108 GN04G-485 <span class="chip chip-signal">NAVIGATION</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning (2.7–5.5V)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #2 — A</span></td><td>RS485 +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">→</td><td><span class="dest">MAX485 #2 — B</span></td><td>RS485 −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">MAX485 #2 — GPS RS485 → TTL <span class="chip chip-signal">PERMANENT RX</span></div>
+      <div class="module-desc">DE+RE till GND — permanent mottagningsläge, ingen Arduino-pin behövs</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino D4</span></td><td>GPS-data → SoftSerial RX</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">(ej ansluten)</span></td><td>Används ej</td></tr>
+        <tr class="gnd-row"><td><span class="pin">DE</span></td><td class="arrow">←</td><td><span class="dest">GND</span></td><td>Permanent AV</td></tr>
+        <tr class="gnd-row"><td><span class="pin">RE</span></td><td class="arrow">←</td><td><span class="dest">GND</span></td><td>Permanent PÅ (lyssnar)</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">←</td><td><span class="dest">GPS — A</span></td><td>RS485 +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">←</td><td><span class="dest">GPS — B</span></td><td>RS485 −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">MAX485 #1 — Boj → Kabel (UAV-länk) <span class="chip chip-signal">KOMMUNIKATION</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">Arduino D0 (TX)</span></td><td>Sändning</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino D1 (RX)</span></td><td>Mottagning</td></tr>
+        <tr class="signal-row"><td><span class="pin">DE + RE</span></td><td class="arrow">←</td><td><span class="dest">Arduino D2</span></td><td>Ihopkopplade</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">→</td><td><span class="dest">Kabel RS485 A</span></td><td>Till WAGO RS485 #1</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">→</td><td><span class="dest">Kabel RS485 B</span></td><td>Till WAGO RS485 #1</td></tr>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KABEL -->
+<!-- ============================================================ -->
+<div class="zone kabel">
+  <div class="zone-header">🟡 UNDERVATTENSKABEL</div>
+  <div class="zone-body">
+    <div class="cable-diagram">
+      <span class="label">BOJ</span> ═══════════════════════════════════ <span class="label">UAV (WAGO)</span><br><br>
+      <span class="wire" style="color:#ef4444;">━━━ 22.2V (Matning från 6S batteri topp) ━━━</span><br>
+      <span class="wire" style="color:#6b7280;">━━━ GND (Gemensam jord) ━━━━━━━━━━━━━━━━</span><br>
+      <span class="wire" style="color:#f59e0b;">━━━ RS485 A (tvinnat par) ━━━━━━━━━━━━━━━</span><br>
+      <span class="wire" style="color:#3b82f6;">━━━ RS485 B (tvinnat par) ━━━━━━━━━━━━━━━</span><br>
+    </div>
+    <table>
+      <tr><th>Ledare</th><th>Boj-sida</th><th>UAV-sida</th><th>Beskrivning</th></tr>
+      <tr class="power-row"><td><span class="pin">22.2V</span></td><td>DC/DC VIN+</td><td>6S Batteri + (topp)</td><td>Kraftmatning</td></tr>
+      <tr class="gnd-row"><td><span class="pin">GND</span></td><td>DC/DC VIN−</td><td>Gemensam GND</td><td>Returledare</td></tr>
+      <tr class="rs485-row"><td><span class="pin">RS485 A</span></td><td>MAX485 #1 A</td><td>WAGO 750-652 #1 A</td><td>Data +</td></tr>
+      <tr class="rs485-row"><td><span class="pin">RS485 B</span></td><td>MAX485 #1 B</td><td>WAGO 750-652 #1 B</td><td>Data −</td></tr>
+    </table>
+    <div class="notes">
+      <h3>⚡ Kabeltips</h3>
+      <ul>
+        <li>120Ω terminering A↔B i vardera änden vid kabel &gt;10m</li>
+        <li>RS485 A+B som tvinnat par</li>
+        <li>Min 0.5mm² för kraftledarna vid 2A/20m</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- WAGO PLC -->
+<!-- ============================================================ -->
+<div class="zone wago">
+  <div class="zone-header">🟣 UAV — WAGO 750 PLC (GATEWAY)</div>
+  <div class="zone-body">
+
+    <div class="module">
+      <div class="module-title">DC/DC 22.2V → 24V <span class="chip chip-power">MATNING WAGO</span></div>
+      <div class="module-desc">Step-up/regulerad omvandlare — WAGO kräver stabil 24V DC</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VIN+</span></td><td class="arrow">←</td><td><span class="dest">Batteri 22.2V (topp)</span></td><td>6S LiPo (topp)</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VIN-</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="power-row"><td><span class="pin">VOUT+</span></td><td class="arrow">→</td><td><span class="dest">WAGO 24V in</span></td><td>24V matning till PLC</td></tr>
+        <tr class="gnd-row"><td><span class="pin">VOUT-</span></td><td class="arrow">→</td><td><span class="dest">WAGO 0V</span></td><td>Jord</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO PFC200 (750-8xxx) <span class="chip chip-wago">PLC CONTROLLER</span> <span class="change-badge badge-new">NY</span></div>
+      <div class="module-desc">Central gateway — tar emot data från boj, bearbetar, styr ballast och vidarebefordrar till UAV Arduino</div>
+      <table>
+        <tr><th>Pin / Port</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">24V</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 24V ut</span></td><td>Matning via leistungskontakter</td></tr>
+        <tr class="gnd-row"><td><span class="pin">0V</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Jord via leistungskontakter</td></tr>
+        <tr class="eth-row"><td><span class="pin">Ethernet 1</span></td><td class="arrow">↔</td><td><span class="dest">DVL (kommer sen)</span></td><td>RJ45 — Doppler Velocity Log</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO 750-652 #1 — RS485 Boj-länk <span class="chip chip-wago">KOMMUNIKATION</span> <span class="change-badge badge-new">NY</span></div>
+      <div class="module-desc">Tar emot PWM + GPS från bojen via undervattenskabeln</div>
+      <table>
+        <tr><th>750-652 #1 Plint</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="rs485-row"><td><span class="pin">A (Data+)</span></td><td class="arrow">←</td><td><span class="dest">Kabel RS485 A</span></td><td>Från boj MAX485 #1</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B (Data−)</span></td><td class="arrow">←</td><td><span class="dest">Kabel RS485 B</span></td><td>Från boj MAX485 #1</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Schirm</span></td><td class="arrow">←</td><td><span class="dest">Kabelskärm</span></td><td>Skärmad kabel (om använd)</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO 750-652 #2 — RS485 → UAV Arduino <span class="chip chip-wago">KOMMUNIKATION</span> <span class="change-badge badge-new">NY</span></div>
+      <div class="module-desc">Skickar vidarebefordrad/bearbetad data till UAV Arduinon</div>
+      <table>
+        <tr><th>750-652 #2 Plint</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="rs485-row"><td><span class="pin">A (Data+)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 (UAV) — A</span></td><td>Till UAV Arduino</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B (Data−)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 (UAV) — B</span></td><td>Till UAV Arduino</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Schirm</span></td><td class="arrow">→</td><td><span class="dest">GND buss (UAV)</span></td><td>Signalreferens</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO 750-466 — Analog In (4-20mA) <span class="chip chip-wago">TRYCKSENSOR</span></div>
+      <div class="module-desc">2 kanaler 4-20mA — Kanal 1: trycksensor (djupmätning)</div>
+      <table>
+        <tr><th>750-466 Plint</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">24V</span></td><td class="arrow">→</td><td><span class="dest">Trycksensor +</span></td><td>Loop-matning</td></tr>
+        <tr class="signal-row"><td><span class="pin">AI 1 (E1)</span></td><td class="arrow">←</td><td><span class="dest">Trycksensor −</span></td><td>4-20mA retur genom mätingång</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Schirm</span></td><td class="arrow">←</td><td><span class="dest">Sensor kabelskärm</span></td><td>Störningsskydd</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO 750-530 — Digital Out <span class="chip chip-wago">BALLAST</span></div>
+      <div class="module-desc">Styr Schneider 2-pol relä för linjärenhet (ballastsystem)</div>
+      <table>
+        <tr><th>750-530 Plint</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="signal-row"><td><span class="pin">DO 1</span></td><td class="arrow">→</td><td><span class="dest">Relä spole 1</span></td><td>Riktning 1 (ut/in)</td></tr>
+        <tr class="signal-row"><td><span class="pin">DO 2</span></td><td class="arrow">→</td><td><span class="dest">Relä spole 2</span></td><td>Riktning 2 (ut/in)</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Schneider 2-pol Relä → Linjärenhet <span class="chip chip-power">BALLAST-MEKANISM</span></div>
+      <div class="module-desc">WAGO DO styr reläet, reläet växlar polaritet till linjärenheten</div>
+      <table>
+        <tr><th>Koppling</th><th></th><th>Till</th><th>Beskrivning</th></tr>
+        <tr class="signal-row"><td><span class="pin">Relä kontakt 1</span></td><td class="arrow">→</td><td><span class="dest">Linjärenhet +24V</span></td><td>Matning via relä</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Relä kontakt 2</span></td><td class="arrow">→</td><td><span class="dest">Linjärenhet GND</span></td><td>Retur via relä</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">WAGO 750-626/020-000 <span class="chip chip-wago">MATNINGSMODUL</span></div>
+      <div class="module-desc">Internt matningskort — fördelar 24V och 0V genom WAGO-raden</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">24V</span></td><td class="arrow">←</td><td><span class="dest">DC/DC 24V ut</span></td><td>Via leistungskontakter</td></tr>
+        <tr class="gnd-row"><td><span class="pin">0V</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Via leistungskontakter</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- Framtida -->
+    <div class="module">
+      <div class="module-title">DVL — Doppler Velocity Log <span class="chip chip-future">KOMMER SEN</span></div>
+      <div class="module-desc">Mäter hastighet relativt havsbotten — Ethernet-anslutning till WAGO PLC</div>
+      <table>
+        <tr><th>Port</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="future-row"><td><span class="pin">Ethernet</span></td><td class="arrow">↔</td><td><span class="dest">WAGO Ethernet 1</span></td><td>RJ45</td></tr>
+        <tr class="future-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">22.2V / 24V</span></td><td>Kolla datablad för matningsspänning</td></tr>
+        <tr class="future-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">IMU / AHRS <span class="chip chip-future">KOMMER SEN</span></div>
+      <div class="module-desc">Attityd- och rörelsesensor — gränssnitt att bestämma</div>
+      <table>
+        <tr><th>Port</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="future-row"><td><span class="pin">TBD</span></td><td class="arrow">↔</td><td><span class="dest">WAGO (RS485/Ethernet/I²C)</span></td><td>Beroende på modell</td></tr>
+        <tr class="future-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">TBD</span></td><td>Kolla datablad</td></tr>
+      </table>
+    </div>
+
+    <div class="notes notes-purple" style="margin-top: 20px;">
+      <h3>🟣 WAGO PLC — Funktioner som gateway</h3>
+      <ul>
+        <li><strong>Vidarebefordra:</strong> PWM-data från boj → UAV Arduino för servo/ESC-styrning</li>
+        <li><strong>Logga:</strong> GPS-position, trycksensordata, systemstatus</li>
+        <li><strong>Styra ballast:</strong> Via DO → relä → linjärenhet (oberoende av Arduino)</li>
+        <li><strong>Övervaka djup:</strong> Trycksensor 4-20mA → beräkna djup</li>
+        <li><strong>Failsafe:</strong> Om boj-signal tappas → neutral PWM till Arduino, ballast upp</li>
+        <li><strong>Framtid:</strong> DVL-data + IMU → autonom navigering</li>
+      </ul>
+    </div>
+
+    <div class="notes notes-purple" style="margin-top: 12px;">
+      <h3>🟣 WAGO Modulordning på DIN-skena</h3>
+      <ul>
+        <li>PFC200 Controller → 750-652 #1 (Boj RS485) → 750-652 #2 (UAV RS485) → 750-466 (AI) → 750-530 (DO) → 750-626 (Matning) → 750-600 (Slutmodul)</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- UAV ARDUINO -->
+<!-- ============================================================ -->
+<div class="zone arduino-uav">
+  <div class="zone-header">🟢 UAV — Arduino Nano + Servo/ESC</div>
+  <div class="zone-body">
+
+    <div class="module">
+      <div class="module-title">MAX485 — RS485 ← WAGO #2 <span class="chip chip-signal">KOMMUNIKATION</span></div>
+      <div class="module-desc">Tar emot vidarebefordrad data från WAGO PLC</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">DI</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV D0 (TX)</span></td><td>Eventuell retur</td></tr>
+        <tr class="signal-row"><td><span class="pin">RO</span></td><td class="arrow">→</td><td><span class="dest">Arduino UAV D1 (RX)</span></td><td>Data från WAGO</td></tr>
+        <tr class="signal-row"><td><span class="pin">DE + RE</span></td><td class="arrow">←</td><td><span class="dest">Arduino UAV D2</span></td><td>Ihopkopplade, normalt LOW</td></tr>
+        <tr class="rs485-row"><td><span class="pin">A</span></td><td class="arrow">←</td><td><span class="dest">WAGO 750-652 #2 A</span></td><td>RS485 +</td></tr>
+        <tr class="rs485-row"><td><span class="pin">B</span></td><td class="arrow">←</td><td><span class="dest">WAGO 750-652 #2 B</span></td><td>RS485 −</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Arduino Nano — UAV <span class="chip chip-signal">SERVO-KONTROLLER</span></div>
+      <div class="module-desc">Tar emot PWM-data från WAGO, styr servon och ESC via PCA9685</div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">5V</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V</span></td><td>Matning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss (UAV)</span></td><td>Jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">D0 (TX)</span></td><td class="arrow">→</td><td><span class="dest">MAX485 DI</span></td><td>Eventuell retur till WAGO</td></tr>
+        <tr class="signal-row"><td><span class="pin">D1 (RX)</span></td><td class="arrow">←</td><td><span class="dest">MAX485 RO</span></td><td>PWM-data från WAGO</td></tr>
+        <tr class="signal-row"><td><span class="pin">D2</span></td><td class="arrow">→</td><td><span class="dest">MAX485 DE+RE</span></td><td>Riktning (normalt LOW)</td></tr>
+        <tr class="i2c-row"><td><span class="pin">A4 (SDA)</span></td><td class="arrow">↔</td><td><span class="dest">PCA9685 SDA</span></td><td>I²C Data</td></tr>
+        <tr class="i2c-row"><td><span class="pin">A5 (SCL)</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 SCL</span></td><td>I²C Clock</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Batteri 22.2V (6S — Botten) + ESC 40A <span class="chip chip-power">MOTOR</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">6S Batteri +</span></td><td class="arrow">→</td><td><span class="dest">ESC Power +</span></td><td>22.2V till ESC</td></tr>
+        <tr class="gnd-row"><td><span class="pin">6S Batteri −</span></td><td class="arrow">→</td><td><span class="dest">GND buss (UAV)</span></td><td>Gemensam jord</td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC Signal</span></td><td class="arrow">←</td><td><span class="dest">PCA9685 CH0 (signal+GND)</span></td><td>Bara signal! Ej BEC!</td></tr>
+        <tr class="power-row"><td><span class="pin">ESC BEC 5V</span></td><td class="arrow">→</td><td><span class="dest">5V logikbuss</span></td><td>Arduino, MAX485, PCA9685 VCC</td></tr>
+        <tr class="signal-row"><td><span class="pin">ESC Motor U/V/W</span></td><td class="arrow">→</td><td><span class="dest">Motor 3-fas</span></td><td>Borstellös motor</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">Batteri 7.4V (2S) + Buck 5A <span class="chip chip-new">SERVOMATNING</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="batt2-row"><td><span class="pin">2S Batteri +</span></td><td class="arrow">→</td><td><span class="dest">Buck VIN+</span></td><td>7.4V in</td></tr>
+        <tr class="gnd-row"><td><span class="pin">2S Batteri −</span></td><td class="arrow">→</td><td><span class="dest">GND buss (UAV)</span></td><td>MÅSTE vara gemensam GND!</td></tr>
+        <tr class="power-row"><td><span class="pin">Buck VOUT+</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 V+ (skruvplint)</span></td><td>5V / 5A servomatning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">Buck VOUT−</span></td><td class="arrow">→</td><td><span class="dest">PCA9685 GND (skruvplint)</span></td><td>Jord</td></tr>
+      </table>
+    </div>
+
+    <hr class="section-divider">
+
+    <div class="module">
+      <div class="module-title">PCA9685 — 16-kanal PWM <span class="chip chip-i2c">I²C SERVO-DRIVER</span></div>
+      <table>
+        <tr><th>Pin</th><th></th><th>Koppling</th><th>Beskrivning</th></tr>
+        <tr class="power-row"><td><span class="pin">VCC</span></td><td class="arrow">←</td><td><span class="dest">ESC BEC 5V</span></td><td>Logikmatning</td></tr>
+        <tr class="gnd-row"><td><span class="pin">GND</span></td><td class="arrow">←</td><td><span class="dest">GND buss</span></td><td>Jord</td></tr>
+        <tr class="power-row"><td><span class="pin">V+ (skruvplint)</span></td><td class="arrow">←</td><td><span class="dest">Buck 5V (5A)</span></td><td>Servomatning</td></tr>
+        <tr class="i2c-row"><td><span class="pin">SDA</span></td><td class="arrow">↔</td><td><span class="dest">Arduino A4</span></td><td>I²C Data</td></tr>
+        <tr class="i2c-row"><td><span class="pin">SCL</span></td><td class="arrow">←</td><td><span class="dest">Arduino A5</span></td><td>I²C Clock</td></tr>
+      </table>
+      <table style="margin-top: 16px;">
+        <tr><th>Kanal</th><th></th><th>Aktuator</th><th>Funktion</th></tr>
+        <tr class="pwm-row"><td><span class="pin">CH0</span></td><td class="arrow">→</td><td><span class="dest">ESC (signal+GND)</span></td><td>Speed +/−</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH1</span></td><td class="arrow">→</td><td><span class="dest">Servo Rudder</span></td><td>Yaw port/starbord</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH2</span></td><td class="arrow">→</td><td><span class="dest">Servo Pitch Port</span></td><td>Pitch port</td></tr>
+        <tr class="pwm-row"><td><span class="pin">CH3</span></td><td class="arrow">→</td><td><span class="dest">Servo Pitch Starbord</span></td><td>Pitch starbord</td></tr>
+      </table>
+      <div class="notes notes-green" style="margin-top: 16px;">
+        <h3>💡 Ballast nu via WAGO</h3>
+        <ul>
+          <li>CH4 på PCA9685 behövs inte längre för ballast — WAGO styr linjärenheten direkt via DO → Relä</li>
+          <li>CH4 kan användas till framtida aktuator vid behov</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- MATNINGSSUMMERING -->
+<!-- ============================================================ -->
+<div style="margin-top: 40px;">
+  <h2 style="color: #f87171; font-size: 1.2rem; margin-bottom: 16px;">⚡ Matningsspänningar — Sammanfattning</h2>
+  <div class="power-summary">
+    <div class="power-card">
+      <h4>🟢 Boj — 5V</h4>
+      <p class="voltage">5V</p>
+      <p>Källa: DC/DC (22.2V → 5V)</p>
+      <p style="margin-top:8px;">Arduino, Skyfly, GPS, MAX485×2</p>
+    </div>
+    <div class="power-card">
+      <h4>🟣 WAGO — 24V</h4>
+      <p class="voltage">24V</p>
+      <p>Källa: DC/DC (22.2V → 24V)</p>
+      <p style="margin-top:8px;">PLC, alla WAGO-moduler, trycksensor, relä</p>
+    </div>
+    <div class="power-card">
+      <h4>🟢 Arduino UAV — 5V logik</h4>
+      <p class="voltage">5V / 3A</p>
+      <p>Källa: ESC BEC</p>
+      <p style="margin-top:8px;">Arduino, MAX485, PCA9685 VCC</p>
+    </div>
+    <div class="power-card">
+      <h4>🟢 Servon — 5V</h4>
+      <p class="voltage">5V / 5A</p>
+      <p>Källa: Buck (7.4V → 5V)</p>
+      <p style="margin-top:8px;">PCA9685 V+ → Servon</p>
+    </div>
+    <div class="power-card">
+      <h4>🔴 Motor — 22.2V</h4>
+      <p class="voltage">22.2V</p>
+      <p>Källa: 6S LiPo (botten)</p>
+      <p style="margin-top:8px;">ESC → Motor</p>
+    </div>
+    <div class="power-card">
+      <h4>🟡 Kabel</h4>
+      <p class="voltage">4 ledare</p>
+      <p>22.2V + GND + RS485 A/B</p>
+      <p style="margin-top:8px;">Från 6S batteri (topp)</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- KOMPONENTLISTA -->
+<!-- ============================================================ -->
+<div style="margin-top: 40px; background: #111827; border-radius: 12px; padding: 24px; border: 1px solid rgba(255,255,255,0.06);">
+  <h2 style="color: #7ec8f0; font-size: 1.1rem; margin-bottom: 16px;">📋 Komponentlista</h2>
+  <table>
+    <tr><th>Komponent</th><th>Antal</th><th>Placering</th><th>Notering</th></tr>
+    <tr><td>Arduino Nano</td><td>2 st</td><td>Boj + UAV</td><td>ATmega328P</td></tr>
+    <tr><td>MAX485-modul</td><td>3 st</td><td>Boj (2) + UAV (1)</td><td>#1 UAV-länk, #2 GPS, #3 WAGO→Arduino</td></tr>
+    <tr><td>GPS E108 GN04G-485</td><td>1 st</td><td>Boj</td><td>RS485, 2.7–5.5V</td></tr>
+    <tr><td>Skyfly 2.4GHz RX</td><td>1 st</td><td>Boj</td><td>5 kanaler PWM</td></tr>
+    <tr><td>PCA9685 PWM-kort</td><td>1 st</td><td>UAV</td><td>I²C, 4 kanaler aktiva (CH0–CH3)</td></tr>
+    <tr><td>ESC 40A</td><td>1 st</td><td>UAV</td><td>BEC 5V/3A</td></tr>
+    <tr><td>Buck-converter 5A</td><td>1 st</td><td>UAV</td><td>7.4V → 5V servomatning</td></tr>
+    <tr><td>DC/DC 22.2V→5V</td><td>1 st</td><td>Boj</td><td>Via kabel</td></tr>
+    <tr><td>DC/DC 22.2V→24V</td><td>1 st</td><td>UAV</td><td>WAGO-matning</td></tr>
+    <tr><td>6S LiPo 22.2V</td><td>2 st</td><td>UAV</td><td>Topp: WAGO+boj, Botten: Motor</td></tr>
+    <tr><td>2S LiPo 7.4V</td><td>1 st</td><td>UAV</td><td>Servomatning</td></tr>
+    <tr><td colspan="4" style="padding-top:12px; color:#c4b5fd; font-weight:600;">WAGO 750-system</td></tr>
+    <tr><td>WAGO PFC200 (750-8xxx)</td><td>1 st</td><td>UAV</td><td>PLC Controller</td></tr>
+    <tr><td>WAGO 750-652</td><td>2 st</td><td>UAV</td><td>#1 Boj-länk, #2 UAV Arduino-länk</td></tr>
+    <tr><td>WAGO 750-466</td><td>1 st</td><td>UAV</td><td>Analog In 4-20mA (trycksensor)</td></tr>
+    <tr><td>WAGO 750-530</td><td>1 st</td><td>UAV</td><td>Digital Out (relä/ballast)</td></tr>
+    <tr><td>WAGO 750-626/020-000</td><td>1 st</td><td>UAV</td><td>Matningsmodul</td></tr>
+    <tr><td>WAGO 750-600</td><td>1 st</td><td>UAV</td><td>Slutmodul (avslutar I/O-raden)</td></tr>
+    <tr><td colspan="4" style="padding-top:12px; color:#c4b5fd; font-weight:600;">Sensorer & Aktuatorer</td></tr>
+    <tr><td>Trycksensor 4-20mA</td><td>1 st</td><td>UAV</td><td>Djupmätning</td></tr>
+    <tr><td>Schneider 2-pol relä</td><td>1 st</td><td>UAV</td><td>Ballast polaritetsväxling</td></tr>
+    <tr><td>Linjärenhet ballast</td><td>1 st</td><td>UAV</td><td>24V, styrd via relä</td></tr>
+    <tr><td>DVL</td><td>1 st</td><td>UAV</td><td>Ethernet — kommer sen</td></tr>
+    <tr><td>IMU / AHRS</td><td>1 st</td><td>UAV</td><td>Gränssnitt TBD — kommer sen</td></tr>
+  </table>
+</div>
+
+<!-- ============================================================ -->
+<!-- NOTERINGAR -->
+<!-- ============================================================ -->
+<div class="notes" style="margin-top: 32px;">
+  <h3>📝 Viktiga noteringar</h3>
+  <ul>
+    <li><strong>GEMENSAM JORD:</strong> Alla tre batterier (2×22.2V + 7.4V) MÅSTE dela GND-buss. Kritiskt för RS485 och I²C.</li>
+    <li><strong>WAGO 24V-matning:</strong> Använd en regulerad DC/DC 22.2V→24V. WAGO tolererar 18–30V men vill ha stabil 24V.</li>
+    <li><strong>Ballast nu via WAGO:</strong> WAGO styr linjärenheten direkt via DO → relä. PCA9685 CH4 frigjord.</li>
+    <li><strong>Två separata RS485-bussar på WAGO:</strong> #1 (boj-kabel) och #2 (UAV Arduino) — ej samma buss!</li>
+    <li><strong>WAGO som failsafe:</strong> Om boj-länk tappas kan WAGO skicka neutral till Arduino + ballast upp.</li>
+    <li><strong>USB-programmering Arduino:</strong> Koppla bort MAX485 D0/D1 vid uppladdning.</li>
+    <li><strong>RS485-terminering:</strong> 120Ω A↔B på kabeländar (boj-kabel). Intern WAGO→Arduino-länk är kort — behöver normalt ej terminering.</li>
+    <li><strong>Avkoppling:</strong> 100µF + 100nF nära PCA9685 V+ skruvplint.</li>
+  </ul>
+</div>
+
+</body>
+</html>
